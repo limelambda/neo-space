@@ -61,7 +61,7 @@ def main():
     lvl_elements = (pygame.Rect(WIDTH//2-20, 0, 20, HEIGHT),)
     ship1 = Player(320, 360, 'assets/ship-p1.png', rotation = -90)
     ship2 = Player(960, 360, 'assets/ship-p2.png', {pygame.K_UP:(0,-1),pygame.K_LEFT:(-1,0),pygame.K_DOWN:(0,1),pygame.K_RIGHT:(1,0)}, rotation = 90)
-    background = pygame.image.load("assets/space.png")
+    background = pygame.transform.scale(pygame.image.load("assets/space.png"), (WIDTH, HEIGHT))
     # Doing the pygame stuff
     pygame.init()
     clock = pygame.time.Clock()
