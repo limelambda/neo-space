@@ -2,7 +2,8 @@ import pygame
 
 WIDTH, HEIGHT = 1280, 720
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
+CLOCK = pygame.time.Clock()
 
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
     if s == 0.0: v*=255; return (v, v, v)
@@ -15,17 +16,13 @@ def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
     if i == 4: return (t, p, v)
     if i == 5: return (v, p, q)
 
-def colliding(x_1,y_1,x_2,y_2, x_size = 80, y_size = 80):
-    x_range, y_range = range(x_2 + 1, x_2 + x_size), range(y_2 + 1, y_2 + y_size)
-    if x_1 + 1 in x_range or x_1 + 80 in x_range:
-        return y_1 + 1 in y_range or y_1 + 80 in y_range
-    return x_1 < 0 or x_1 > WIDTH - 80 or y_1 < 0 or y_1 > HEIGHT - 80
+def colliding(rect1 : pygame.rect, rect2 : pygame.rect):
+    return rect1.x < 0 or rect1.x > WIDTH - 80 or rect1.y < 0 or rect1.y > HEIGHT - 80 or pygame.Rect.colliderect(rect1, rect2)
 
 class Player:
     def __init__(self, x, y, sprite, controls = {pygame.K_w:(0,-1),pygame.K_a:(-1,0),pygame.K_s:(0,1),pygame.K_d:(1,0)}, rotation = 0, speed = 1):
-        self.x = x
-        self.y = y
         self.sprite = pygame.transform.scale(pygame.transform.rotate(pygame.image.load(sprite), rotation), (80, 80))
+        self.rect = pygame.Rect(x, y, self.sprite.get_height(), self.sprite.get_width())
         self.x_speed = 0
         self.y_speed = 0
         self.speed = speed
@@ -38,54 +35,54 @@ class Player:
             if pressed[key]:
                 self.x_speed += delta[0]
                 self.y_speed += delta[1]
-        prev_x = self.x
-        prev_y = self.y
-        self.x = int(self.x + self.x_speed)
-        self.y = int(self.y + self.y_speed)
-        for i in lvl_elements:
-            if colliding(self.x, self.y, i.x, i.y, i.width, i.height):
-                self.x, self.y = prev_x, prev_y
+        prev_x = self.rect.x
+        prev_y = self.rect.y
+        self.rect.x = int(self.rect.x + self.x_speed / (CLOCK.get_fps() + 1))
+        self.rect.y = int(self.rect.y + self.y_speed / (CLOCK.get_fps() + 1))  # +1 tp prevent ZeroDivisionError
+        for lvl_element in lvl_elements:
+            if colliding(self.rect, lvl_element):
+                self.rect.x, self.rect.y = prev_x, prev_y
                 self.x_speed, self.y_speed = 0, 0
-        self.x_speed = self.x_speed/1.1
-        self.y_speed = self.y_speed/1.1
+        delta =  1 + 0.1 / (CLOCK.get_fps() + 1)  # +1 tp prevent ZeroDivisionError
+        self.x_speed = self.x_speed/delta
+        self.y_speed = self.y_speed/delta
         #moving ^ blit-ing v
         if abs(self.x_speed) < 0.05:
             self.x_speed = 0
         if abs(self.y_speed) < 0.05:
             self.y_speed = 0
-        screen.blit(self.sprite,(self.x,self.y))
+        SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
 
 def main():
     global lvl_elements
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH//2-20, 0, 20, HEIGHT),)
-    ship1 = Player(320, 360, 'assets/ship-p1.png', rotation = -90)
-    ship2 = Player(960, 360, 'assets/ship-p2.png', {pygame.K_UP:(0,-1),pygame.K_LEFT:(-1,0),pygame.K_DOWN:(0,1),pygame.K_RIGHT:(1,0)}, rotation = 90)
+    ship1 = Player(WIDTH//4, HEIGHT//2, 'assets/ship-p1.png', rotation = -90)
+    ship2 = Player(WIDTH//4*3, HEIGHT//2, 'assets/ship-p2.png', {pygame.K_UP:(0,-1),pygame.K_LEFT:(-1,0),pygame.K_DOWN:(0,1),pygame.K_RIGHT:(1,0)}, rotation = 90)
     background = pygame.transform.scale(pygame.image.load("assets/space.png"), (WIDTH, HEIGHT))
     # Doing the pygame stuff
     pygame.init()
-    clock = pygame.time.Clock()
     pygame.mouse.set_visible(False)
     # Define a variable to control the main loop
     running = True
     while running:
-        rgb += 1
+        rgb += ((CLOCK.get_fps() + 1) / 5400)  # +1 tp prevent ZeroDivisionError
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 # Change the value to False, to exit the main loop
                 running = False
         pressed = pygame.key.get_pressed()
         # Start rendering stuff
-        screen.blit(background, (0, 0))
+        SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
         ship2.update(pressed)
         for lvl_element in lvl_elements:
-            pygame.draw.rect(screen, hsv_to_rgb(rgb/360,1,1), lvl_element)
+            pygame.draw.rect(SCREEN, hsv_to_rgb(rgb/360,1,1), lvl_element)
         # Render
         pygame.display.flip()
         # Fps stuff
-        clock.tick(90)
-        pygame.display.set_caption(f"Gam fps:{round(clock.get_fps())}")
+        CLOCK.tick()
+        pygame.display.set_caption(f"Gam fps:{round(CLOCK.get_fps())}")
 
 
 if __name__ == '__main__':
