@@ -5,7 +5,6 @@ WIDTH, HEIGHT = 1280, 720
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
 CLOCK = pygame.time.Clock()
 MAX_PROJECTILES = 3
-FONT = pygame.font.SysFont("Cooper", 60)
 
 
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
@@ -137,6 +136,19 @@ class Player(Entity):
         SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
 
 
+def win(who, FONT):
+    SCREEN.blit(
+        pygame.font.Font.render(FONT, f"{who} wins!", 10, (255, 155, 155)),
+        (
+            WIDTH / 2 - (pygame.font.Font.size(FONT, f"{who} wins!")[0] / 2),
+            HEIGHT / 2 - (pygame.font.Font.size(FONT, f"{who} wins!")[1] / 2),
+        ),
+    )
+    pygame.display.flip()
+    [CLOCK.tick(90) for frame in range(180)]  # Just stop for two seconds
+    quit()
+
+
 def main():
     global lvl_elements
     rgb = 0
@@ -147,6 +159,7 @@ def main():
     # Doing the pygame stuff
     pygame.init()
     pygame.mouse.set_visible(False)
+    FONT = pygame.font.Font("04B_30__.ttf", 50)
     # Define a variable to control the main loop
     running = True
     ship1 = Player(
@@ -192,30 +205,24 @@ def main():
             missle.update()
         for lvl_element in lvl_elements:
             pygame.draw.rect(SCREEN, hsv_to_rgb(rgb / 360, 1, 1), lvl_element)
-        # Do text shenanigans
-        draw_text(ship1.score, 0, 0, 'tl')
-        draw_text(ship2.score, WIDTH, 0, 'tr')
+        # Do text shenanigans / check for win
+        if ship1.score > 9:
+            win("P1", FONT)
+        if ship2.score > 9:
+            win("P2", FONT)
+        SCREEN.blit(
+            pygame.font.Font.render(FONT, str(ship1.score), 10, (255, 155, 155)),
+            (30, 120),
+        )
+        SCREEN.blit(
+            pygame.font.Font.render(FONT, str(ship2.score), 10, (255, 155, 155)),
+            (WIDTH - (30 + pygame.font.Font.size(FONT, str(ship2.score))[0]), 120),
+        )
         # Render
         pygame.display.flip()
         # Fps stuff
         CLOCK.tick(90)
         pygame.display.set_caption(f"Gam fps:{round(CLOCK.get_fps())}")
-
-
-def draw_text(text, x, y, alignment = 'c'):
-    text_renderer = FONT.render(text, 1, (255, 255, 255))
-    if alignment == 'c':
-        SCREEN.blit(
-            text_renderer,
-            (
-                x - text_renderer.get_width() / 2,
-                y - text_renderer.get_height() / 2,
-            ),
-        )
-    # update the display
-    pygame.display.update()
-    # pause then restart
-    pygame.time.delay(5000)
 
 
 if __name__ == "__main__":
