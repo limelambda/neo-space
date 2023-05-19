@@ -1,7 +1,7 @@
 import pygame
 
-WIDTH, HEIGHT = 1280, 720
-
+pygame.display.init()
+WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
 CLOCK = pygame.time.Clock()
 MAX_PROJECTILES = 3
@@ -37,9 +37,9 @@ def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
 def colliding(rect1: pygame.rect, rect2: pygame.rect):
     return (
         rect1.x < 0
-        or rect1.x > WIDTH - 80
+        or rect1.x > WIDTH - rect1.width
         or rect1.y < 0
-        or rect1.y > HEIGHT - 80
+        or rect1.y > HEIGHT - rect1.height
         or pygame.Rect.colliderect(rect1, rect2)
     )
 
@@ -66,7 +66,7 @@ class Missle(Entity):
         self.team = team
 
     def update(self):
-        if not (self.rect.x > WIDTH or self.rect.x < 0):
+        if not (self.rect.x > WIDTH - self.rect.width or self.rect.x <= 0):
             if colliding(self.rect, self.enemy):
                 self.team.score += 1
                 missles.remove(self)
@@ -112,12 +112,15 @@ class Player(Entity):
         global lvl_elements
         self.cooldown -= 0.5
         for key, action in self.controls.items():
-            if pressed[key]:
-                if type(action) == tuple:
-                    self.x_speed += action[0]
-                    self.y_speed += action[1]
-                else:
-                    {"fire": self.fire}[action]()
+            try:
+                if pressed[0][key] or pressed[1][key]:
+                    if type(action) == tuple:
+                        self.x_speed += action[0]
+                        self.y_speed += action[1]
+                    else:
+                        {"fire": self.fire}[action]()
+            except KeyError:
+                continue
         prev_x = self.rect.x
         prev_y = self.rect.y
         self.rect.x += self.x_speed
@@ -196,7 +199,30 @@ def main():
             if event.type == pygame.QUIT:
                 # Change the value to False, to exit the main loop
                 running = False
+            if event.type == pygame.JOYDEVICEADDED:
+                joy = pygame.joystick.Joystick(event.device_index)
+                joys.append(joy)
+                print(f"Joystick {joy.get_instance_id()} connencted")
         pressed = pygame.key.get_pressed()
+        fakepressed = {}
+        if pygame.joystick.get_count() > 1:  # Fake joysticks input by converting keys and adding to pressed
+            for iter, joy in enumerate(joys):
+                for button, button_pressed in {button:joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
+                    if button == 3 and button_pressed:  # Fire
+                        fakepressed[(pygame.K_e,pygame.K_RCTRL)[iter]] = True
+                for axis, value in {axis:joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
+                    print(axis, value, joy.get_numaxes())
+                    if axis == 1:  # Vert
+                        if value > 0.5:
+                            fakepressed[(pygame.K_s,pygame.K_DOWN)[iter]] = True
+                        if value < -0.5:
+                            fakepressed[(pygame.K_w,pygame.K_UP)[iter]] = True
+                    if axis == 0:  # Hor
+                        if value > 0.5:
+                            fakepressed[(pygame.K_d,pygame.K_RIGHT)[iter]] = True
+                        if value < -0.5:
+                            fakepressed[(pygame.K_a,pygame.K_LEFT)[iter]] = True
+        pressed = (pressed, fakepressed)
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
@@ -227,4 +253,5 @@ def main():
 
 if __name__ == "__main__":
     missles = []
+    joys = []
     main()
