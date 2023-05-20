@@ -271,26 +271,25 @@ def main_pt1():
         )
         SCREEN.blit(
             pygame.font.Font.render(
-                FONT, "Please type in the other players IP!", 10, (255, 155, 155)),
+                FONT, "Please type in the hosts IP!", 10, (255, 155, 155)),
             (
-                WIDTH / 2 - (pygame.font.Font.size(FONT,"Please type in the other players IP!")[0] / 2),
-                HEIGHT / 2 - (pygame.font.Font.size(FONT,"Please type in the other players IP!")[1]),
+                WIDTH / 2 - (pygame.font.Font.size(FONT,"Please type in the hosts IP!")[0] / 2),
+                HEIGHT / 2 - (pygame.font.Font.size(FONT,"Please type in the hosts IP!")[1]),
             ),
         )
-        pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_BACKSPACE:
                     user_text = user_text[:-1]
-                elif event.key == pygame.K_RETURN:
-                    HOST = user_text
+                elif event.key == pygame.K_RETURN or not is_client:
+                    HOST = user_text if is_client else '0.0.0.0'
                     temp_running = False
                     SCREEN.fill((0, 0, 0))
                     SCREEN.blit(
                         pygame.font.Font.render(
-                            FONT, "Press C to connect!", 10, (255, 155, 155)),
+                            FONT, "Waiting for other player!!", 10, (255, 155, 155)),
                         (
                             WIDTH / 2 - (pygame.font.Font.size(FONT,"Waiting for other player!")[0] / 2),
                             HEIGHT / 2 - (pygame.font.Font.size(FONT,"Waiting for other player!")[1] / 2),
@@ -298,6 +297,7 @@ def main_pt1():
                     )
                 else:
                     user_text += event.unicode
+        pygame.display.flip()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if is_client:
             s.connect((HOST, PORT))
