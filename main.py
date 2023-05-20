@@ -31,6 +31,7 @@ def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
 
 
 def colliding(rect1: pygame.rect, rect2: pygame.rect):
+    return False
     return (
         rect1.x < 0
         or rect1.x > WIDTH - rect1.width
@@ -105,8 +106,7 @@ class Player(Entity):
                 )
                 self.cooldown = 10
 
-    def update(self, pressed):
-        global lvl_elements
+    def update(self, pressed=[], coords_overide=None):
         self.cooldown -= 0.5
         for key, action in self.controls.items():
             try:
@@ -120,8 +120,12 @@ class Player(Entity):
                 continue
         prev_x = self.rect.x
         prev_y = self.rect.y
-        self.rect.x += self.x_speed
-        self.rect.y += self.y_speed
+        if coords_overide != None:
+            self.rect.x = coords_overide[0]
+            self.rect.y = coords_overide[1]
+        else:
+            self.rect.x += self.x_speed
+            self.rect.y += self.y_speed
         for lvl_element in lvl_elements:
             if colliding(self.rect, lvl_element):
                 self.rect.x, self.rect.y = prev_x, prev_y
@@ -145,14 +149,14 @@ def win(who, FONT):
         ),
     )
     pygame.display.flip()
-    [CLOCK.tick(90) for frame in range(180)]  # Just stop for two seconds
+    [CLOCK.tick(60) for frame in range(180)]  # Just stop for three seconds
     quit()
 
 
 def main_pt2(s, conn=None):
     global lvl_elements
     rgb = 0
-    lvl_elements = (pygame.Rect(WIDTH // 2 - 20, 0, 20, HEIGHT),)
+    lvl_elements = (pygame.Rect(WIDTH // 2 - 10, 0, 20, HEIGHT),)
     background = pygame.transform.scale(
         pygame.image.load("assets/space.png"), (WIDTH, HEIGHT)
     )
@@ -217,20 +221,25 @@ def main_pt2(s, conn=None):
                             pressed.append((pygame.K_a, pygame.K_LEFT)[iter])
         # Network connectivity lol
         if is_client:
-            s.sendall(pickle.dumps(pressed))  # Serialize and send pressed
+            # Serialize and send ship & if firing a missle
+            s.sendall(pickle.dumps(
+                (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
             try:
                 # Receive and deserialize the server data
-                netpressed = pickle.loads(s.recv(1024))
+                recived = pickle.loads(s.recv(1024))
             except EOFError:
                 print('yolo?')
         else:
             # Receive and deserialize the client data
-            netpressed = pickle.loads(conn.recv(1024))
-            conn.sendall(pickle.dumps(pressed))  # Serialize and send pressed
+            recived = pickle.loads(conn.recv(1024))
+            # Serialize and send ship & if firing a missle
+            conn.sendall(pickle.dumps(
+                (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
-        ship2.update(netpressed)
+        ship2.update([k for k, v in ship2.controls.items() if v == 'fire'] if recived[0] else [],
+        (WIDTH - recived[1][0] - 78 , recived[1][1]))  # Why 78????
         for missle in missles:
             missle.update()
         for lvl_element in lvl_elements:
@@ -253,8 +262,8 @@ def main_pt2(s, conn=None):
         # Render
         pygame.display.flip()
         # Fps stuff
-        CLOCK.tick(90)
-        pygame.display.set_caption(f"Gam fps:{round(CLOCK.get_fps())}")
+        CLOCK.tick(60)
+        pygame.display.set_caption(f"Neo-space fps:{round(CLOCK.get_fps())}")
 
 
 def main_pt1():
@@ -262,42 +271,48 @@ def main_pt1():
     temp_running = True
     while temp_running:
         SCREEN.fill((0, 0, 0))
-        SCREEN.blit(
-            pygame.font.Font.render(FONT, user_text, 10, (255, 155, 155)),
-            (
-                WIDTH / 2 - (pygame.font.Font.size(FONT, user_text)[0] / 2),
-                HEIGHT / 2,
-            ),
-        )
-        SCREEN.blit(
-            pygame.font.Font.render(
-                FONT, "Please type in the hosts IP!", 10, (255, 155, 155)),
-            (
-                WIDTH / 2 - (pygame.font.Font.size(FONT,"Please type in the hosts IP!")[0] / 2),
-                HEIGHT / 2 - (pygame.font.Font.size(FONT,"Please type in the hosts IP!")[1]),
-            ),
-        )
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_BACKSPACE:
-                    user_text = user_text[:-1]
-                elif event.key == pygame.K_RETURN or not is_client:
-                    HOST = user_text if is_client else '0.0.0.0'
-                    temp_running = False
-                    SCREEN.fill((0, 0, 0))
-                    SCREEN.blit(
-                        pygame.font.Font.render(
-                            FONT, "Waiting for other player!!", 10, (255, 155, 155)),
-                        (
-                            WIDTH / 2 - (pygame.font.Font.size(FONT,"Waiting for other player!")[0] / 2),
-                            HEIGHT / 2 - (pygame.font.Font.size(FONT,"Waiting for other player!")[1] / 2),
-                        ),
-                    )
-                else:
-                    user_text += event.unicode
+        if is_client:
+            SCREEN.blit(
+                pygame.font.Font.render(FONT, user_text, 10, (255, 155, 155)),
+                (
+                    WIDTH / 2 - (pygame.font.Font.size(FONT, user_text)[0] / 2),
+                    HEIGHT / 2,
+                ),
+            )
+            SCREEN.blit(
+                pygame.font.Font.render(
+                    FONT, "Please type in the hosts IP!", 10, (255, 155, 155)),
+                (
+                    WIDTH / 2 - (pygame.font.Font.size(FONT, "Please type in the hosts IP!")[0] / 2),
+                    HEIGHT / 2 - (pygame.font.Font.size(FONT, "Please type in the hosts IP!")[1]),
+                ),
+            )
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_BACKSPACE:
+                        user_text = user_text[:-1]
+                    elif event.key == pygame.K_RETURN or not is_client:
+                        HOST = user_text
+                        temp_running = False
+                    else:
+                        user_text += event.unicode
+        else:
+            SCREEN.fill((0, 0, 0))
+            SCREEN.blit(
+                pygame.font.Font.render(
+                    FONT, "Waiting for other player!!", 10, (255, 155, 155)),
+                (
+                    WIDTH / 2 - (pygame.font.Font.size(FONT, "Waiting for other player!")[0] / 2),
+                    HEIGHT / 2 - (pygame.font.Font.size(FONT, "Waiting for other player!")[1] / 2),
+                ),
+            )
+            HOST = '0.0.0.0'
+            temp_running = False
         pygame.display.flip()
+        CLOCK.tick(60)
+        pygame.display.set_caption(f"Neo-space fps:{round(CLOCK.get_fps())}")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if is_client:
             s.connect((HOST, PORT))
@@ -317,7 +332,7 @@ def menu():
     SCREEN.blit(
         pygame.font.Font.render(FONT, "Press S to host!", 10, (255, 155, 155)),
         (
-            WIDTH / 2 - (pygame.font.Font.size(FONT,"Press S to host!")[0] / 2),
+            WIDTH / 2 - (pygame.font.Font.size(FONT, "Press S to host!")[0] / 2),
             HEIGHT / 2,
         ),
     )
@@ -325,11 +340,12 @@ def menu():
         pygame.font.Font.render(
             FONT, "Press C to connect!", 10, (255, 155, 155)),
         (
-            WIDTH / 2 - (pygame.font.Font.size(FONT,"Press C to connect!")[0] / 2),
-            HEIGHT / 2 - (pygame.font.Font.size(FONT,"Press C to connect!")[1]),
+            WIDTH / 2 - (pygame.font.Font.size(FONT, "Press C to connect!")[0] / 2),
+            HEIGHT / 2 - (pygame.font.Font.size(FONT, "Press C to connect!")[1]),
         ),
     )
     pygame.display.flip()
+    pygame.display.set_caption(f"Neo-space")
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
