@@ -2,7 +2,7 @@ import pygame
 
 pygame.display.init()
 WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SHOWN)
 CLOCK = pygame.time.Clock()
 MAX_PROJECTILES = 3
 
@@ -114,7 +114,7 @@ class Player(Entity):
         self.cooldown -= 0.5
         for key, action in self.controls.items():
             try:
-                if pressed[0][key] or pressed[1][key]:
+                if pressed[key]:
                     if type(action) == tuple:
                         self.x_speed += action[0]
                         self.y_speed += action[1]
@@ -204,26 +204,25 @@ def main():
                 joy = pygame.joystick.Joystick(event.device_index)
                 joys.append(joy)
                 print(f"Joystick {joy.get_instance_id()} connencted")
-        pressed = pygame.key.get_pressed()
-        fakepressed = {}
+        # Convert ScancodeWrapper to dict which it kinda already was but just acted badly
+        pressed = {i: pygame.key.get_pressed()[i] for i in [119,97,115,100,101,1073741903,1073741904,1073741905,1073741906,1073742052]}
         if pygame.joystick.get_count() > 0:  # Fake joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
             for iter, joy in enumerate(joys):
                 for button, button_pressed in {button: joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
                     if button == 3 and button_pressed:  # Fire
-                        fakepressed[(pygame.K_e, pygame.K_RCTRL)[iter]] = True
+                        pressed[(pygame.K_e, pygame.K_RCTRL)[iter]] = True
                 for axis, value in {axis: joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
                     print(axis, value, joy.get_numaxes())
                     if axis == 1:  # Vert
                         if value > 0.5:
-                            fakepressed[(pygame.K_s, pygame.K_DOWN)[iter]] = True
+                            pressed[(pygame.K_s, pygame.K_DOWN)[iter]] = True
                         if value < -0.5:
-                            fakepressed[(pygame.K_w, pygame.K_UP)[iter]] = True
+                            pressed[(pygame.K_w, pygame.K_UP)[iter]] = True
                     if axis == 0:  # Hor
                         if value > 0.5:
-                            fakepressed[(pygame.K_d, pygame.K_RIGHT)[iter]] = True
+                            pressed[(pygame.K_d, pygame.K_RIGHT)[iter]] = True
                         if value < -0.5:
-                            fakepressed[(pygame.K_a, pygame.K_LEFT)[iter]] = True
-        pressed = (pressed, fakepressed)
+                            pressed[(pygame.K_a, pygame.K_LEFT)[iter]] = True
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
