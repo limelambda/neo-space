@@ -53,7 +53,8 @@ class Entity:
             )
         else:
             self.sprite = pygame.transform.scale(sprite, (size, size))
-        self.rect = pygame.Rect(x, y, self.sprite.get_height(), self.sprite.get_width())
+        self.rect = pygame.Rect(
+            x, y, self.sprite.get_height(), self.sprite.get_width())
         self.x_speed = 0.0
         self.y_speed = 0.0
         self.rotation = rotation
@@ -205,23 +206,23 @@ def main():
                 print(f"Joystick {joy.get_instance_id()} connencted")
         pressed = pygame.key.get_pressed()
         fakepressed = {}
-        if pygame.joystick.get_count() > 1:  # Fake joysticks input by converting keys and adding to pressed
+        if pygame.joystick.get_count() > 0:  # Fake joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
             for iter, joy in enumerate(joys):
-                for button, button_pressed in {button:joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
+                for button, button_pressed in {button: joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
                     if button == 3 and button_pressed:  # Fire
-                        fakepressed[(pygame.K_e,pygame.K_RCTRL)[iter]] = True
-                for axis, value in {axis:joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
+                        fakepressed[(pygame.K_e, pygame.K_RCTRL)[iter]] = True
+                for axis, value in {axis: joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
                     print(axis, value, joy.get_numaxes())
                     if axis == 1:  # Vert
                         if value > 0.5:
-                            fakepressed[(pygame.K_s,pygame.K_DOWN)[iter]] = True
+                            fakepressed[(pygame.K_s, pygame.K_DOWN)[iter]] = True
                         if value < -0.5:
-                            fakepressed[(pygame.K_w,pygame.K_UP)[iter]] = True
+                            fakepressed[(pygame.K_w, pygame.K_UP)[iter]] = True
                     if axis == 0:  # Hor
                         if value > 0.5:
-                            fakepressed[(pygame.K_d,pygame.K_RIGHT)[iter]] = True
+                            fakepressed[(pygame.K_d, pygame.K_RIGHT)[iter]] = True
                         if value < -0.5:
-                            fakepressed[(pygame.K_a,pygame.K_LEFT)[iter]] = True
+                            fakepressed[(pygame.K_a, pygame.K_LEFT)[iter]] = True
         pressed = (pressed, fakepressed)
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
@@ -237,12 +238,14 @@ def main():
         if ship2.score > 9:
             win("P2", FONT)
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ship1.score), 10, (255, 155, 155)),
+            pygame.font.Font.render(
+                FONT, str(ship1.score), 10, (255, 155, 155)),
             (30, 120),
         )
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ship2.score), 10, (255, 155, 155)),
-            (WIDTH - (30 + pygame.font.Font.size(FONT, str(ship2.score))[0]), 120),
+            pygame.font.Font.render(
+                FONT, str(ship2.score), 10, (255, 155, 155)),
+            (WIDTH - (30 + pygame.font.Font.size(FONT,str(ship2.score))[0]), 120),
         )
         # Render
         pygame.display.flip()
