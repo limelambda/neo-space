@@ -1,11 +1,6 @@
 import pygame
-
-pygame.display.init()
-WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SHOWN)
-CLOCK = pygame.time.Clock()
-MAX_PROJECTILES = 3
-
+import socket
+import pickle
 
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
     if s == 0.0:
@@ -114,7 +109,7 @@ class Player(Entity):
         self.cooldown -= 0.5
         for key, action in self.controls.items():
             try:
-                if pressed[key]:
+                if key in pressed:
                     if type(action) == tuple:
                         self.x_speed += action[0]
                         self.y_speed += action[1]
@@ -153,7 +148,7 @@ def win(who, FONT):
     quit()
 
 
-def main():
+def main_pt2(s, conn = None):
     global lvl_elements
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 20, 0, 20, HEIGHT),)
@@ -165,7 +160,6 @@ def main():
     pygame.mouse.set_visible(False)
     FONT = pygame.font.Font("04B_30__.ttf", 50)
     # Define a variable to control the main loop
-    running = True
     ship1 = Player(
         WIDTH // 4,
         HEIGHT // 2,
@@ -194,6 +188,7 @@ def main():
         enemy=ship1,
     )
     ship1.enemy = ship2
+    running = True
     while running:
         rgb += 1
         for event in pygame.event.get():
@@ -205,28 +200,38 @@ def main():
                 joys.append(joy)
                 print(f"Joystick {joy.get_instance_id()} connencted")
         # Convert ScancodeWrapper to dict which it kinda already was but just acted badly
-        pressed = {i: pygame.key.get_pressed()[i] for i in [119,97,115,100,101,1073741903,1073741904,1073741905,1073741906,1073742052]}
+        pressed = [i for i in (119,97,115,100,101,1073741903,1073741904,1073741905,1073741906,1073742052) if pygame.key.get_pressed()[i]]
         if pygame.joystick.get_count() > 0:  # Fake joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
             for iter, joy in enumerate(joys):
                 for button, button_pressed in {button: joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
                     if button == 3 and button_pressed:  # Fire
-                        pressed[(pygame.K_e, pygame.K_RCTRL)[iter]] = True
+                        pressed.append((pygame.K_e, pygame.K_RCTRL)[iter])
                 for axis, value in {axis: joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
                     print(axis, value, joy.get_numaxes())
                     if axis == 1:  # Vert
                         if value > 0.5:
-                            pressed[(pygame.K_s, pygame.K_DOWN)[iter]] = True
+                            pressed.append((pygame.K_s, pygame.K_DOWN)[iter])
                         if value < -0.5:
-                            pressed[(pygame.K_w, pygame.K_UP)[iter]] = True
+                            pressed.append((pygame.K_w, pygame.K_UP)[iter])
                     if axis == 0:  # Hor
                         if value > 0.5:
-                            pressed[(pygame.K_d, pygame.K_RIGHT)[iter]] = True
+                            pressed.append((pygame.K_d, pygame.K_RIGHT)[iter])
                         if value < -0.5:
-                            pressed[(pygame.K_a, pygame.K_LEFT)[iter]] = True
+                            pressed.append((pygame.K_a, pygame.K_LEFT)[iter])
+        # Network connectivity lol
+        if is_client:
+            s.sendall(pickle.dumps(pressed)) # Serialize and send pressed
+            try:
+                netpressed = pickle.loads(s.recv(1024)) # Receive and deserialize the server data
+            except EOFError:
+                print('yolo?')
+        else:
+            netpressed = pickle.loads(conn.recv(1024)) # Receive and deserialize the client data
+            conn.sendall(pickle.dumps(pressed)) # Serialize and send pressed
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
-        ship2.update(pressed)
+        ship2.update(netpressed)
         for missle in missles:
             missle.update()
         for lvl_element in lvl_elements:
@@ -253,7 +258,31 @@ def main():
         pygame.display.set_caption(f"Gam fps:{round(CLOCK.get_fps())}")
 
 
+def main_pt1():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if is_client:
+            s.connect((HOST, PORT))
+            main_pt2(s)
+        else:
+            s.bind((HOST, PORT))
+            s.listen()
+            conn, addr = s.accept()
+            with conn:
+                print(f"Connected by {addr}")
+                main_pt2(s, conn)
+
+
+
 if __name__ == "__main__":
+    is_client = input('Will you be the client or server? (c or s?)') == 'c'
+    pygame.display.init()
+    #WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+    WIDTH, HEIGHT = (640, 480)
+    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
+    CLOCK = pygame.time.Clock()
+    MAX_PROJECTILES = 3
+    HOST = "127.0.0.1"
+    PORT = 24681
     missles = []
     joys = []
-    main()
+    main_pt1()
