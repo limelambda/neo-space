@@ -2,6 +2,7 @@ import pygame
 import socket
 import pickle
 
+
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
     if s == 0.0:
         v *= 255
@@ -148,17 +149,13 @@ def win(who, FONT):
     quit()
 
 
-def main_pt2(s, conn = None):
+def main_pt2(s, conn=None):
     global lvl_elements
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 20, 0, 20, HEIGHT),)
     background = pygame.transform.scale(
         pygame.image.load("assets/space.png"), (WIDTH, HEIGHT)
     )
-    # Doing the pygame stuff
-    pygame.init()
-    pygame.mouse.set_visible(False)
-    FONT = pygame.font.Font("04B_30__.ttf", 50)
     # Define a variable to control the main loop
     ship1 = Player(
         WIDTH // 4,
@@ -178,11 +175,11 @@ def main_pt2(s, conn = None):
         HEIGHT // 2,
         "assets/ship-p2.png",
         {
-            pygame.K_UP: (0, -1),
-            pygame.K_LEFT: (-1, 0),
-            pygame.K_DOWN: (0, 1),
-            pygame.K_RIGHT: (1, 0),
-            pygame.K_RCTRL: "fire",
+            pygame.K_w: (0, -1),
+            pygame.K_a: (-1, 0),
+            pygame.K_s: (0, 1),
+            pygame.K_d: (1, 0),
+            pygame.K_e: "fire",
         },
         rotation=90,
         enemy=ship1,
@@ -200,7 +197,7 @@ def main_pt2(s, conn = None):
                 joys.append(joy)
                 print(f"Joystick {joy.get_instance_id()} connencted")
         # Convert ScancodeWrapper to dict which it kinda already was but just acted badly
-        pressed = [i for i in (119,97,115,100,101,1073741903,1073741904,1073741905,1073741906,1073742052) if pygame.key.get_pressed()[i]]
+        pressed = [i for i in (119, 97, 115, 100, 101, 1073741903, 1073741904, 1073741905, 1073741906, 1073742052) if pygame.key.get_pressed()[i]]
         if pygame.joystick.get_count() > 0:  # Fake joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
             for iter, joy in enumerate(joys):
                 for button, button_pressed in {button: joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
@@ -220,14 +217,16 @@ def main_pt2(s, conn = None):
                             pressed.append((pygame.K_a, pygame.K_LEFT)[iter])
         # Network connectivity lol
         if is_client:
-            s.sendall(pickle.dumps(pressed)) # Serialize and send pressed
+            s.sendall(pickle.dumps(pressed))  # Serialize and send pressed
             try:
-                netpressed = pickle.loads(s.recv(1024)) # Receive and deserialize the server data
+                # Receive and deserialize the server data
+                netpressed = pickle.loads(s.recv(1024))
             except EOFError:
                 print('yolo?')
         else:
-            netpressed = pickle.loads(conn.recv(1024)) # Receive and deserialize the client data
-            conn.sendall(pickle.dumps(pressed)) # Serialize and send pressed
+            # Receive and deserialize the client data
+            netpressed = pickle.loads(conn.recv(1024))
+            conn.sendall(pickle.dumps(pressed))  # Serialize and send pressed
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
@@ -249,7 +248,7 @@ def main_pt2(s, conn = None):
         SCREEN.blit(
             pygame.font.Font.render(
                 FONT, str(ship2.score), 10, (255, 155, 155)),
-            (WIDTH - (30 + pygame.font.Font.size(FONT,str(ship2.score))[0]), 120),
+            (WIDTH - (30 + pygame.font.Font.size(FONT, str(ship2.score))[0]), 120),
         )
         # Render
         pygame.display.flip()
@@ -259,6 +258,46 @@ def main_pt2(s, conn = None):
 
 
 def main_pt1():
+    user_text = ''
+    temp_running = True
+    while temp_running:
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(
+            pygame.font.Font.render(FONT, user_text, 10, (255, 155, 155)),
+            (
+                WIDTH / 2 - (pygame.font.Font.size(FONT, user_text)[0] / 2),
+                HEIGHT / 2,
+            ),
+        )
+        SCREEN.blit(
+            pygame.font.Font.render(
+                FONT, "Please type in the other players IP!", 10, (255, 155, 155)),
+            (
+                WIDTH / 2 - (pygame.font.Font.size(FONT,"Please type in the other players IP!")[0] / 2),
+                HEIGHT / 2 - (pygame.font.Font.size(FONT,"Please type in the other players IP!")[1]),
+            ),
+        )
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_BACKSPACE:
+                    user_text = user_text[:-1]
+                elif event.key == pygame.K_RETURN:
+                    HOST = user_text
+                    temp_running = False
+                    SCREEN.fill((0, 0, 0))
+                    SCREEN.blit(
+                        pygame.font.Font.render(
+                            FONT, "Press C to connect!", 10, (255, 155, 155)),
+                        (
+                            WIDTH / 2 - (pygame.font.Font.size(FONT,"Waiting for other player!")[0] / 2),
+                            HEIGHT / 2 - (pygame.font.Font.size(FONT,"Waiting for other player!")[1] / 2),
+                        ),
+                    )
+                else:
+                    user_text += event.unicode
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if is_client:
             s.connect((HOST, PORT))
@@ -272,17 +311,47 @@ def main_pt1():
                 main_pt2(s, conn)
 
 
+def menu():
+    global is_client, HOST
+    SCREEN.fill((0, 0, 0))
+    SCREEN.blit(
+        pygame.font.Font.render(FONT, "Press S to host!", 10, (255, 155, 155)),
+        (
+            WIDTH / 2 - (pygame.font.Font.size(FONT,"Press S to host!")[0] / 2),
+            HEIGHT / 2,
+        ),
+    )
+    SCREEN.blit(
+        pygame.font.Font.render(
+            FONT, "Press C to connect!", 10, (255, 155, 155)),
+        (
+            WIDTH / 2 - (pygame.font.Font.size(FONT,"Press C to connect!")[0] / 2),
+            HEIGHT / 2 - (pygame.font.Font.size(FONT,"Press C to connect!")[1]),
+        ),
+    )
+    pygame.display.flip()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s:
+                    is_client = False
+                    main_pt1()
+                elif event.key == pygame.K_c:
+                    is_client = True
+                    main_pt1()
+
 
 if __name__ == "__main__":
-    is_client = input('Will you be the client or server? (c or s?)') == 'c'
-    pygame.display.init()
-    #WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
-    WIDTH, HEIGHT = (640, 480)
-    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED)
+    pygame.init()
+    pygame.mouse.set_visible(False)
+    WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
     CLOCK = pygame.time.Clock()
+    FONT = pygame.font.Font("04B_30__.ttf", 50)
     MAX_PROJECTILES = 3
-    HOST = "127.0.0.1"
     PORT = 24681
     missles = []
     joys = []
-    main_pt1()
+    menu()
