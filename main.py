@@ -223,11 +223,8 @@ def main_pt2(s, conn=None):
             # Serialize and send ship & if firing a missle
             s.sendall(pickle.dumps(
                 (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
-            try:
-                # Receive and deserialize the server data
-                recived = pickle.loads(s.recv(1024))
-            except EOFError:
-                print('yolo?')
+            # Receive and deserialize the server data
+            recived = pickle.loads(s.recv(1024))
         else:
             # Receive and deserialize the client data
             recived = pickle.loads(conn.recv(1024))
@@ -266,6 +263,7 @@ def main_pt2(s, conn=None):
 
 
 def main_pt1():
+    global WIDTH, HEIGHT
     user_text = ''
     temp_running = True
     while temp_running:
@@ -315,6 +313,11 @@ def main_pt1():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if is_client:
             s.connect((HOST, PORT))
+            # Perform screen size compatiablility stuff
+            s.sendall(pickle.dumps((pygame.display.Info().current_w, pygame.display.Info().current_h)))
+            recived = pickle.loads(s.recv(1024))  # Receive and deserialize the server data
+            WIDTH, HEIGHT = (min(pygame.display.Info().current_w, recived[0]), min(pygame.display.Info().current_h, recived[1]))
+            print(WIDTH, HEIGHT)
             main_pt2(s)
         else:
             s.bind((HOST, PORT))
@@ -322,6 +325,11 @@ def main_pt1():
             conn, addr = s.accept()
             with conn:
                 print(f"Connected by {addr}")
+                # Perform screen size compatiablility stuff
+                recived = pickle.loads(conn.recv(1024)) # Receive and deserialize the client data
+                conn.sendall(pickle.dumps((pygame.display.Info().current_w, pygame.display.Info().current_h)))
+                WIDTH, HEIGHT = (min(pygame.display.Info().current_w, recived[0]), min(pygame.display.Info().current_h, recived[1]))
+                print(WIDTH, HEIGHT)
                 main_pt2(s, conn)
 
 
