@@ -105,7 +105,7 @@ class Player(Entity):
                 )
                 self.cooldown = 10
 
-    def update(self, pressed=[], coords_overide=None):
+    def update(self, pressed, coords_overide=None):
         self.cooldown -= 0.5
         for key, action in self.controls.items():
             try:
@@ -152,7 +152,7 @@ def win(who, FONT):
     quit()
 
 
-def main_pt2(s, conn=None):
+def main_pt2(s=None, conn=None):
     global lvl_elements
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 10, 0, 20, HEIGHT),)
@@ -183,25 +183,32 @@ def main_pt2(s, conn=None):
             pygame.K_s: (0, 1),
             pygame.K_d: (1, 0),
             pygame.K_e: "fire",
+        } if is_online else
+                {
+            pygame.K_UP: (0, -1),
+            pygame.K_LEFT: (-1, 0),
+            pygame.K_DOWN: (0, 1),
+            pygame.K_RIGHT: (1, 0),
+            pygame.K_RCTRL: "fire",
         },
         rotation=90,
         enemy=ship1,
     )
     ship1.enemy = ship2
-    running = True
-    while running:
+    while True:
         rgb += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 # Change the value to False, to exit the main loop
-                running = False
+                quit()
             if event.type == pygame.JOYDEVICEADDED:
                 joy = pygame.joystick.Joystick(event.device_index)
                 joys.append(joy)
                 print(f"Joystick {joy.get_instance_id()} connencted")
-        # Convert ScancodeWrapper to dict which it kinda already was but just acted badly
+                
+        # Convert ScancodeWrapper from a weird totally not a dict to a list
         pressed = [i for i in (119, 97, 115, 100, 101, 1073741903, 1073741904, 1073741905, 1073741906, 1073742052) if pygame.key.get_pressed()[i]]
-        if pygame.joystick.get_count() > 0:  # Fake joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
+        if pygame.joystick.get_count() > 0:  # Joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
             for iter, joy in enumerate(joys):
                 for button, button_pressed in {button: joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
                     if button == 3 and button_pressed:  # Fire
@@ -218,24 +225,30 @@ def main_pt2(s, conn=None):
                             pressed.append((pygame.K_d, pygame.K_RIGHT)[iter])
                         if value < -0.5:
                             pressed.append((pygame.K_a, pygame.K_LEFT)[iter])
+
         # Network connectivity lol
-        if is_client:
-            # Serialize and send ship & if firing a missle
-            s.sendall(pickle.dumps(
-                (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
-            # Receive and deserialize the server data
-            recived = pickle.loads(s.recv(1024))
-        else:
-            # Receive and deserialize the client data
-            recived = pickle.loads(conn.recv(1024))
-            # Serialize and send ship & if firing a missle
-            conn.sendall(pickle.dumps(
-                (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
+        if is_online:
+            if is_client:
+                # Serialize and send ship & if firing a missle
+                s.sendall(pickle.dumps(
+                    (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
+                # Receive and deserialize the server data
+                recived = pickle.loads(s.recv(1024))
+            else:
+                # Receive and deserialize the client data
+                recived = pickle.loads(conn.recv(1024))
+                # Serialize and send ship & if firing a missle
+                conn.sendall(pickle.dumps(
+                    (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
+
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
-        ship2.update([k for k, v in ship2.controls.items() if v == 'fire'] if recived[0] else [],
-        (WIDTH - recived[1][0] - 78 , recived[1][1]))  # Why 78????
+        if is_online:
+            ship2.update([k for k, v in ship2.controls.items() if v == 'fire'] if recived[0] else [],
+            (WIDTH - recived[1][0] - 78 , recived[1][1]))  # Why 78????
+        else:
+            ship2.update(pressed)
         for missle in missles:
             missle.update()
         for lvl_element in lvl_elements:
@@ -255,6 +268,7 @@ def main_pt2(s, conn=None):
                 FONT, str(ship2.score), 10, (255, 155, 155)),
             (WIDTH - (30 + pygame.font.Font.size(FONT, str(ship2.score))[0]), 120),
         )
+
         # Render
         pygame.display.flip()
         # Fps stuff
@@ -290,7 +304,7 @@ def main_pt1():
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_BACKSPACE:
                         user_text = user_text[:-1]
-                    elif event.key == pygame.K_RETURN or not is_client:
+                    elif event.key == pygame.K_RETURN:
                         HOST = user_text
                         temp_running = False
                     else:
@@ -334,25 +348,41 @@ def main_pt1():
 
 
 def menu():
-    global is_client, HOST
+    global is_client, is_online, HOST
     SCREEN.fill((0, 0, 0))
     SCREEN.blit(
-        pygame.font.Font.render(FONT, "Press S to host!", 10, (255, 155, 155)),
+        pygame.font.Font.render(
+            FONT, "Local will auto start after 5 seconds ", 10, (255, 155, 155)),
         (
-            WIDTH / 2 - (pygame.font.Font.size(FONT, "Press S to host!")[0] / 2),
-            HEIGHT / 2,
+            WIDTH / 2 - pygame.font.Font.size(FONT, "Local will auto start after 5 seconds")[0] / 2,
+            5,
         ),
     )
     SCREEN.blit(
         pygame.font.Font.render(
-            FONT, "Press C to connect!", 10, (255, 155, 155)),
+            FONT, "Press L to play locally!", 10, (255, 155, 155)),
         (
-            WIDTH / 2 - (pygame.font.Font.size(FONT, "Press C to connect!")[0] / 2),
-            HEIGHT / 2 - (pygame.font.Font.size(FONT, "Press C to connect!")[1]),
+            WIDTH / 2 - pygame.font.Font.size(FONT, "Press L to play locally!")[0] / 2,
+            HEIGHT / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[1] * 1.5,
+        ),
+    )
+    SCREEN.blit(
+        pygame.font.Font.render(FONT, "Press C to connect!", 10, (255, 155, 155)),
+        (
+            WIDTH / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[0] / 2,
+            HEIGHT / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[1] / 2,
+        ),
+    )
+    SCREEN.blit(
+        pygame.font.Font.render(FONT, "Press S to host!", 10, (255, 155, 155)),
+        (
+            WIDTH / 2 - pygame.font.Font.size(FONT, "Press S to host!")[0] / 2,
+            HEIGHT / 2 + pygame.font.Font.size(FONT, "Press C to connect!")[1] / 2,
         ),
     )
     pygame.display.flip()
     pygame.display.set_caption(f"Neo-space")
+    is_online = True
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -364,6 +394,12 @@ def menu():
                 elif event.key == pygame.K_c:
                     is_client = True
                     main_pt1()
+                elif event.key == pygame.K_l:
+                    is_online = False
+                    main_pt2()
+        if pygame.time.get_ticks() > 5000:
+            is_online = False
+            main_pt2()
 
 
 if __name__ == "__main__":
