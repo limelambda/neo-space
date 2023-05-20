@@ -31,7 +31,6 @@ def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
 
 
 def colliding(rect1: pygame.rect, rect2: pygame.rect):
-    return False
     return (
         rect1.x < 0
         or rect1.x > WIDTH - rect1.width
