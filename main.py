@@ -1,5 +1,8 @@
-import pygame, socket, pickle
+import pygame, socket, pickle, sys, os
 
+def resource_path(relative_path):
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
     if s == 0.0:
@@ -154,13 +157,13 @@ def main_pt2(s=None, conn=None):
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 10, 0, 20, HEIGHT),)
     background = pygame.transform.scale(
-        pygame.image.load("assets/space.png"), (WIDTH, HEIGHT)
+        pygame.image.load(resource_path("assets/space.png")), (WIDTH, HEIGHT)
     )
     # Define a variable to control the main loop
     ship1 = Player(
         WIDTH // 4,
         HEIGHT // 2,
-        "assets/ship-p1.png",
+        resource_path("assets/ship-p1.png"),
         {
             pygame.K_w: (0, -1),
             pygame.K_a: (-1, 0),
@@ -173,7 +176,7 @@ def main_pt2(s=None, conn=None):
     ship2 = Player(
         WIDTH // 4 * 3,
         HEIGHT // 2,
-        "assets/ship-p2.png",
+        resource_path("assets/ship-p2.png"),
         {
             pygame.K_w: (0, -1),
             pygame.K_a: (-1, 0),
@@ -402,7 +405,7 @@ if __name__ == "__main__":
     WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
     SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
     CLOCK = pygame.time.Clock()
-    FONT = pygame.font.Font("assets/04B_30__.ttf", 50)
+    FONT = pygame.font.Font(resource_path("assets/04B_30__.ttf"), 50)
     MAX_PROJECTILES = 3
     PORT = 24681
     missles = []
