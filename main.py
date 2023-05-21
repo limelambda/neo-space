@@ -1,6 +1,4 @@
-import pygame
-import socket
-import pickle
+import pygame, socket, pickle
 
 
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
@@ -87,7 +85,6 @@ class Player(Entity):
 
     def fire(self):
         if self.cooldown <= 0:
-            print("Missle fired!")
             if (
                 len([missle for missle in missles if missle.team is self])
                 <= MAX_PROJECTILES
@@ -214,7 +211,6 @@ def main_pt2(s=None, conn=None):
                     if button == 3 and button_pressed:  # Fire
                         pressed.append((pygame.K_e, pygame.K_RCTRL)[iter])
                 for axis, value in {axis: joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
-                    print(axis, value, joy.get_numaxes())
                     if axis == 1:  # Vert
                         if value > 0.5:
                             pressed.append((pygame.K_s, pygame.K_DOWN)[iter])
@@ -245,7 +241,7 @@ def main_pt2(s=None, conn=None):
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
         if is_online:
-            ship2.update([k for k, v in ship2.controls.items() if v == 'fire'] if recived[0] else [],
+            ship2.update([k for k, v in ship2.controls.items() if v == "fire"] if recived[0] else [],
             (WIDTH - recived[1][0] - 78 , recived[1][1]))  # Why 78????
         else:
             ship2.update(pressed)
@@ -278,7 +274,7 @@ def main_pt2(s=None, conn=None):
 
 def main_pt1():
     global WIDTH, HEIGHT
-    user_text = ''
+    user_text = ""
     temp_running = True
     while temp_running:
         SCREEN.fill((0, 0, 0))
@@ -319,7 +315,7 @@ def main_pt1():
                     HEIGHT / 2 - (pygame.font.Font.size(FONT, "Waiting for other player!")[1] / 2),
                 ),
             )
-            HOST = '0.0.0.0'
+            HOST = "0.0.0.0"
             temp_running = False
         pygame.display.flip()
         CLOCK.tick(60)
@@ -331,7 +327,6 @@ def main_pt1():
             s.sendall(pickle.dumps((pygame.display.Info().current_w, pygame.display.Info().current_h)))
             recived = pickle.loads(s.recv(1024))  # Receive and deserialize the server data
             WIDTH, HEIGHT = (min(pygame.display.Info().current_w, recived[0]), min(pygame.display.Info().current_h, recived[1]))
-            print(WIDTH, HEIGHT)
             main_pt2(s)
         else:
             s.bind((HOST, PORT))
@@ -343,7 +338,6 @@ def main_pt1():
                 recived = pickle.loads(conn.recv(1024)) # Receive and deserialize the client data
                 conn.sendall(pickle.dumps((pygame.display.Info().current_w, pygame.display.Info().current_h)))
                 WIDTH, HEIGHT = (min(pygame.display.Info().current_w, recived[0]), min(pygame.display.Info().current_h, recived[1]))
-                print(WIDTH, HEIGHT)
                 main_pt2(s, conn)
 
 
@@ -408,7 +402,7 @@ if __name__ == "__main__":
     WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
     SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
     CLOCK = pygame.time.Clock()
-    FONT = pygame.font.Font("04B_30__.ttf", 50)
+    FONT = pygame.font.Font("assets/04B_30__.ttf", 50)
     MAX_PROJECTILES = 3
     PORT = 24681
     missles = []
