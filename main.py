@@ -123,8 +123,8 @@ class Player(Entity):
             self.rect.x = coords_overide[0]
             self.rect.y = coords_overide[1]
         else:
-            self.rect.x += self.x_speed
-            self.rect.y += self.y_speed
+            self.rect.x = round(self.rect.x + self.x_speed)
+            self.rect.y = round(self.rect.y + self.y_speed)
         for lvl_element in lvl_elements:
             if colliding(self.rect, lvl_element):
                 self.rect.x, self.rect.y = prev_x, prev_y
