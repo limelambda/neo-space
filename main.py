@@ -1,4 +1,4 @@
-import pygame, socket, pickle, sys, os
+import pygame, socket, pickle, sys, os, random
 
 
 def resource_path(relative_path):
@@ -44,7 +44,7 @@ def colliding(rect1: pygame.rect, rect2: pygame.rect):
 
 
 class Entity:
-    def __init__(self, x, y, sprite, rotation, size):
+    def __init__(self, x, y, sprite, rotation = 0, size = 80):
         if type(sprite) == str:
             self.sprite = pygame.transform.scale(
                 pygame.transform.rotate(pygame.image.load(sprite), rotation),
@@ -58,11 +58,29 @@ class Entity:
         self.rotation = rotation
 
 
+class Invincibility(Entity):
+    def __init__(self, x, y):
+        super().__init__(x, y, resource_path("assets/powerups/invin.png"))
+        self.parent = None
+
+    def update(self):
+        if self.parent == None:
+            if colliding(self.rect, ships[0]):
+                ships[0].iframes += 50
+            if colliding(self.rect, ships[1]):
+                ships[1].iframes += 50
+            else:
+                SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
+        else:
+            SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
+
+
 class Missle(Entity):
     def __init__(self, x, y, sprite, team, enemy, rotation=0, size=5):
         super().__init__(x, y, sprite, rotation, size)
         self.enemy = enemy
         self.team = team
+        self.speed = 20
 
     def update(self):
         if not (self.rect.x > WIDTH - self.rect.width or self.rect.x <= 0):
@@ -72,7 +90,7 @@ class Missle(Entity):
                 missles.remove(self)
                 del self
             else:
-                self.rect.x += (int(self.rotation < 0) * 2 - 1) * 10
+                self.rect.x += (int(self.rotation < 0) * 2 - 1) * self.speed
                 SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
         else:
             missles.remove(self)
@@ -156,7 +174,9 @@ def win(who, FONT):
 
 
 def main_pt2(s=None, conn=None):
-    global lvl_elements, missles
+    global lvl_elements, missles, ships
+    ships = [] 
+    pwr_ups = []
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 10, 0, 20, HEIGHT),)
     background = pygame.transform.scale(
@@ -164,7 +184,7 @@ def main_pt2(s=None, conn=None):
     )
     x_transform = lambda to_transform: WIDTH - to_transform - 78  # Why 78????
     # Define a variable to control the main loop
-    ship1 = Player(
+    ships.append(Player(
         WIDTH // 4,
         HEIGHT // 2,
         resource_path("assets/ship-p1.png"),
@@ -176,8 +196,8 @@ def main_pt2(s=None, conn=None):
             pygame.K_e: "fire",
         },
         rotation=-90,
-    )
-    ship2 = Player(
+    ))
+    ships.append(Player(
         WIDTH // 4 * 3,
         HEIGHT // 2,
         resource_path("assets/ship-p2.png"),
@@ -197,15 +217,19 @@ def main_pt2(s=None, conn=None):
             pygame.K_RCTRL: "fire",
         },
         rotation=90,
-        enemy=ship1,
-    )
-    ship1.enemy = ship2
+        enemy=ships[0],
+    ))
+    ships[0].enemy = ships[1]
+    SPAWN_PWR_UP_EVNT = pygame.USEREVENT+1
+    pygame.time.set_timer(SPAWN_PWR_UP_EVNT, 10000)  # Every 1000ms spawn pwr up
     while True:
         rgb += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 # Change the value to False, to exit the main loop
                 quit()
+            if event.type == SPAWN_PWR_UP_EVNT:
+                pwr_ups.append(Invincibility(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)))
             if event.type == pygame.JOYDEVICEADDED:
                 joy = pygame.joystick.Joystick(event.device_index)
                 joys.append(joy)
@@ -259,11 +283,11 @@ def main_pt2(s=None, conn=None):
                 s.sendall(
                     pickle.dumps(
                         (
-                            (ship1.rect.x, ship1.rect.y),
+                            (ships[0].rect.x, ships[0].rect.y),
                             [
                                 (missle.rect.x, missle.rect.y)
                                 for missle in missles
-                                if missle.team == ship1
+                                if missle.team == ships[0]
                             ],
                         )
                     )
@@ -277,11 +301,11 @@ def main_pt2(s=None, conn=None):
                 conn.sendall(
                     pickle.dumps(
                         (
-                            (ship1.rect.x, ship1.rect.y),
+                            (ships[0].rect.x, ships[0].rect.y),
                             [
                                 (missle.rect.x, missle.rect.y)
                                 for missle in missles
-                                if missle.team == ship1
+                                if missle.team == ships[0]
                             ],
                         )
                     )
@@ -289,39 +313,39 @@ def main_pt2(s=None, conn=None):
 
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
-        ship1.update(pressed)
+        ships[0].update(pressed)
         if is_online:
-            missles = [missle for missle in missles if missle.team == ship1] + [
+            missles = [missle for missle in missles if missle.team == ships[0]] + [
                 Missle(
                     x_transform(i[0]),
                     i[1],
-                    ship2.sprite,
-                    ship2,
-                    ship2.enemy,
-                    rotation=ship2.rotation,
+                    ships[1].sprite,
+                    ships[1],
+                    ships[1].enemy,
+                    rotation=ships[1].rotation,
                     size=50,
                 )
                 for i in recived[1]
             ]
-            ship2.update([], (x_transform(recived[0][0]), recived[0][1]))
+            ships[1].update([], (x_transform(recived[0][0]), recived[0][1]))
         else:
-            ship2.update(pressed)
-        for missle in missles:
-            missle.update()
+            ships[1].update(pressed)
+        for to_update in missles + pwr_ups:
+            to_update.update()
         for lvl_element in lvl_elements:
             pygame.draw.rect(SCREEN, hsv_to_rgb(rgb / 360, 1, 1), lvl_element)
         # Do text shenanigans / check for win
-        if ship1.score > 9:
+        if ships[0].score > 9:
             win("P1", FONT)
-        if ship2.score > 9:
+        if ships[1].score > 9:
             win("P2", FONT)
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ship1.score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ships[0].score), 10, (255, 155, 155)),
             (30, 120),
         )
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ship2.score), 10, (255, 155, 155)),
-            (WIDTH - (30 + pygame.font.Font.size(FONT, str(ship2.score))[0]), 120),
+            pygame.font.Font.render(FONT, str(ships[1].score), 10, (255, 155, 155)),
+            (WIDTH - (30 + pygame.font.Font.size(FONT, str(ships[1].score))[0]), 120),
         )
 
         # Render
@@ -490,7 +514,7 @@ def menu():
 if __name__ == "__main__":
     pygame.init()
     pygame.mouse.set_visible(False)
-    WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+    WIDTH, HEIGHT = (pygame.display.Info().current_w // 1.5, pygame.display.Info().current_h // 1.5)
     SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
     CLOCK = pygame.time.Clock()
     FONT = pygame.font.Font(resource_path("assets/04B_30__.ttf"), 50)
