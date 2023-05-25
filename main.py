@@ -1,8 +1,10 @@
 import pygame, socket, pickle, sys, os
 
+
 def resource_path(relative_path):
-    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
+
 
 def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
     if s == 0.0:
@@ -50,8 +52,7 @@ class Entity:
             )
         else:
             self.sprite = pygame.transform.scale(sprite, (size, size))
-        self.rect = pygame.Rect(
-            x, y, self.sprite.get_height(), self.sprite.get_width())
+        self.rect = pygame.Rect(x, y, self.sprite.get_height(), self.sprite.get_width())
         self.x_speed = 0.0
         self.y_speed = 0.0
         self.rotation = rotation
@@ -65,8 +66,9 @@ class Missle(Entity):
 
     def update(self):
         if not (self.rect.x > WIDTH - self.rect.width or self.rect.x <= 0):
-            if colliding(self.rect, self.enemy):
+            if colliding(self.rect, self.enemy) and self.enemy.iframes < 1:
                 self.team.score += 1
+                self.enemy.iframes = 5
                 missles.remove(self)
                 del self
             else:
@@ -81,9 +83,8 @@ class Player(Entity):
     def __init__(self, x, y, sprite, controls, rotation=0, size=80, enemy=None):
         super().__init__(x, y, sprite, rotation, size)
         self.controls = controls
-        self.score = 0
+        self.score = self.cooldown = self.iframes = 0
         self.enemy = enemy
-        self.cooldown = 0
         print(f"Player crated!")
 
     def fire(self):
@@ -106,6 +107,8 @@ class Player(Entity):
                 self.cooldown = 10
 
     def update(self, pressed, coords_overide=None):
+        if self.iframes > 0:
+            self.iframes -= 1
         self.cooldown -= 0.5
         for key, action in self.controls.items():
             try:
@@ -153,12 +156,13 @@ def win(who, FONT):
 
 
 def main_pt2(s=None, conn=None):
-    global lvl_elements
+    global lvl_elements, missles
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 10, 0, 20, HEIGHT),)
     background = pygame.transform.scale(
         pygame.image.load(resource_path("assets/space.png")), (WIDTH, HEIGHT)
     )
+    x_transform = lambda to_transform: WIDTH - to_transform - 78  # Why 78????
     # Define a variable to control the main loop
     ship1 = Player(
         WIDTH // 4,
@@ -183,8 +187,9 @@ def main_pt2(s=None, conn=None):
             pygame.K_s: (0, 1),
             pygame.K_d: (1, 0),
             pygame.K_e: "fire",
-        } if is_online else
-                {
+        }
+        if is_online
+        else {
             pygame.K_UP: (0, -1),
             pygame.K_LEFT: (-1, 0),
             pygame.K_DOWN: (0, 1),
@@ -205,15 +210,37 @@ def main_pt2(s=None, conn=None):
                 joy = pygame.joystick.Joystick(event.device_index)
                 joys.append(joy)
                 print(f"Joystick {joy.get_instance_id()} connencted")
-                
+
         # Convert ScancodeWrapper from a weird totally not a dict to a list
-        pressed = [i for i in (119, 97, 115, 100, 101, 1073741903, 1073741904, 1073741905, 1073741906, 1073742052) if pygame.key.get_pressed()[i]]
-        if pygame.joystick.get_count() > 0:  # Joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
+        pressed = [
+            i
+            for i in (
+                119,
+                97,
+                115,
+                100,
+                101,
+                1073741903,
+                1073741904,
+                1073741905,
+                1073741906,
+                1073742052,
+            )
+            if pygame.key.get_pressed()[i]
+        ]
+        if (
+            pygame.joystick.get_count() > 0
+        ):  # Joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
             for iter, joy in enumerate(joys):
-                for button, button_pressed in {button: joy.get_button(button) for button in range(joy.get_numbuttons())}.items():
+                for button, button_pressed in {
+                    button: joy.get_button(button)
+                    for button in range(joy.get_numbuttons())
+                }.items():
                     if button == 3 and button_pressed:  # Fire
                         pressed.append((pygame.K_e, pygame.K_RCTRL)[iter])
-                for axis, value in {axis: joy.get_axis(axis) for axis in range(joy.get_numaxes())}.items():
+                for axis, value in {
+                    axis: joy.get_axis(axis) for axis in range(joy.get_numaxes())
+                }.items():
                     if axis == 1:  # Vert
                         if value > 0.5:
                             pressed.append((pygame.K_s, pygame.K_DOWN)[iter])
@@ -228,24 +255,55 @@ def main_pt2(s=None, conn=None):
         # Network connectivity lol
         if is_online:
             if is_client:
-                # Serialize and send ship & if firing a missle
-                s.sendall(pickle.dumps(
-                    (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
+                # Serialize and send ship & missles
+                s.sendall(
+                    pickle.dumps(
+                        (
+                            (ship1.rect.x, ship1.rect.y),
+                            [
+                                (missle.rect.x, missle.rect.y)
+                                for missle in missles
+                                if missle.team == ship1
+                            ],
+                        )
+                    )
+                )
                 # Receive and deserialize the server data
                 recived = pickle.loads(s.recv(1024))
             else:
                 # Receive and deserialize the client data
                 recived = pickle.loads(conn.recv(1024))
-                # Serialize and send ship & if firing a missle
-                conn.sendall(pickle.dumps(
-                    (pygame.K_e in pressed, (ship1.rect.x, ship1.rect.y))))
+                # Serialize and send ship & missles
+                conn.sendall(
+                    pickle.dumps(
+                        (
+                            (ship1.rect.x, ship1.rect.y),
+                            [
+                                (missle.rect.x, missle.rect.y)
+                                for missle in missles
+                                if missle.team == ship1
+                            ],
+                        )
+                    )
+                )
 
         # Start rendering stuff
         SCREEN.blit(background, (0, 0))
         ship1.update(pressed)
         if is_online:
-            ship2.update([k for k, v in ship2.controls.items() if v == "fire"] if recived[0] else [],
-            (WIDTH - recived[1][0] - 78 , recived[1][1]))  # Why 78????
+            missles = [missle for missle in missles if missle.team == ship1] + [
+                Missle(
+                    x_transform(i[0]),
+                    i[1],
+                    ship2.sprite,
+                    ship2,
+                    ship2.enemy,
+                    rotation=ship2.rotation,
+                    size=50,
+                )
+                for i in recived[1]
+            ]
+            ship2.update([], (x_transform(recived[0][0]), recived[0][1]))
         else:
             ship2.update(pressed)
         for missle in missles:
@@ -258,13 +316,11 @@ def main_pt2(s=None, conn=None):
         if ship2.score > 9:
             win("P2", FONT)
         SCREEN.blit(
-            pygame.font.Font.render(
-                FONT, str(ship1.score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ship1.score), 10, (255, 155, 155)),
             (30, 120),
         )
         SCREEN.blit(
-            pygame.font.Font.render(
-                FONT, str(ship2.score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ship2.score), 10, (255, 155, 155)),
             (WIDTH - (30 + pygame.font.Font.size(FONT, str(ship2.score))[0]), 120),
         )
 
@@ -291,10 +347,16 @@ def main_pt1():
             )
             SCREEN.blit(
                 pygame.font.Font.render(
-                    FONT, "Please type in the hosts IP!", 10, (255, 155, 155)),
+                    FONT, "Please type in the hosts IP!", 10, (255, 155, 155)
+                ),
                 (
-                    WIDTH / 2 - (pygame.font.Font.size(FONT, "Please type in the hosts IP!")[0] / 2),
-                    HEIGHT / 2 - (pygame.font.Font.size(FONT, "Please type in the hosts IP!")[1]),
+                    WIDTH / 2
+                    - (
+                        pygame.font.Font.size(FONT, "Please type in the hosts IP!")[0]
+                        / 2
+                    ),
+                    HEIGHT / 2
+                    - (pygame.font.Font.size(FONT, "Please type in the hosts IP!")[1]),
                 ),
             )
             for event in pygame.event.get():
@@ -312,10 +374,13 @@ def main_pt1():
             SCREEN.fill((0, 0, 0))
             SCREEN.blit(
                 pygame.font.Font.render(
-                    FONT, "Waiting for other player!!", 10, (255, 155, 155)),
+                    FONT, "Waiting for other player!!", 10, (255, 155, 155)
+                ),
                 (
-                    WIDTH / 2 - (pygame.font.Font.size(FONT, "Waiting for other player!")[0] / 2),
-                    HEIGHT / 2 - (pygame.font.Font.size(FONT, "Waiting for other player!")[1] / 2),
+                    WIDTH / 2
+                    - (pygame.font.Font.size(FONT, "Waiting for other player!")[0] / 2),
+                    HEIGHT / 2
+                    - (pygame.font.Font.size(FONT, "Waiting for other player!")[1] / 2),
                 ),
             )
             HOST = "0.0.0.0"
@@ -327,9 +392,18 @@ def main_pt1():
         if is_client:
             s.connect((HOST, PORT))
             # Perform screen size compatiablility stuff
-            s.sendall(pickle.dumps((pygame.display.Info().current_w, pygame.display.Info().current_h)))
-            recived = pickle.loads(s.recv(1024))  # Receive and deserialize the server data
-            WIDTH, HEIGHT = (min(pygame.display.Info().current_w, recived[0]), min(pygame.display.Info().current_h, recived[1]))
+            s.sendall(
+                pickle.dumps(
+                    (pygame.display.Info().current_w, pygame.display.Info().current_h)
+                )
+            )
+            recived = pickle.loads(
+                s.recv(1024)
+            )  # Receive and deserialize the server data
+            WIDTH, HEIGHT = (
+                min(pygame.display.Info().current_w, recived[0]),
+                min(pygame.display.Info().current_h, recived[1]),
+            )
             main_pt2(s)
         else:
             s.bind((HOST, PORT))
@@ -338,9 +412,21 @@ def main_pt1():
             with conn:
                 print(f"Connected by {addr}")
                 # Perform screen size compatiablility stuff
-                recived = pickle.loads(conn.recv(1024)) # Receive and deserialize the client data
-                conn.sendall(pickle.dumps((pygame.display.Info().current_w, pygame.display.Info().current_h)))
-                WIDTH, HEIGHT = (min(pygame.display.Info().current_w, recived[0]), min(pygame.display.Info().current_h, recived[1]))
+                recived = pickle.loads(
+                    conn.recv(1024)
+                )  # Receive and deserialize the client data
+                conn.sendall(
+                    pickle.dumps(
+                        (
+                            pygame.display.Info().current_w,
+                            pygame.display.Info().current_h,
+                        )
+                    )
+                )
+                WIDTH, HEIGHT = (
+                    min(pygame.display.Info().current_w, recived[0]),
+                    min(pygame.display.Info().current_h, recived[1]),
+                )
                 main_pt2(s, conn)
 
 
@@ -349,15 +435,17 @@ def menu():
     SCREEN.fill((0, 0, 0))
     SCREEN.blit(
         pygame.font.Font.render(
-            FONT, "Local will auto start after 5 seconds ", 10, (255, 155, 155)),
+            FONT, "Local will auto start after 5 seconds ", 10, (255, 155, 155)
+        ),
         (
-            WIDTH / 2 - pygame.font.Font.size(FONT, "Local will auto start after 5 seconds")[0] / 2,
+            WIDTH / 2
+            - pygame.font.Font.size(FONT, "Local will auto start after 5 seconds")[0]
+            / 2,
             5,
         ),
     )
     SCREEN.blit(
-        pygame.font.Font.render(
-            FONT, "Press L to play locally!", 10, (255, 155, 155)),
+        pygame.font.Font.render(FONT, "Press L to play locally!", 10, (255, 155, 155)),
         (
             WIDTH / 2 - pygame.font.Font.size(FONT, "Press L to play locally!")[0] / 2,
             HEIGHT / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[1] * 1.5,
