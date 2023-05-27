@@ -1,4 +1,4 @@
-import pygame, socket, pickle, sys, os, random
+import pygame, socket, pickle, sys, os, random, math
 
 
 def resource_path(relative_path):
@@ -65,10 +65,12 @@ class Invincibility(Entity):
 
     def update(self):
         if self.parent == None:
-            if colliding(self.rect, ships[0]):
-                ships[0].iframes += 50
-            if colliding(self.rect, ships[1]):
-                ships[1].iframes += 50
+            for ship in ships:
+                if colliding(self.rect, ship):
+                    ship.iframes = 600
+                    pwr_ups.remove(self)
+                    del self
+                    return
             else:
                 SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
         else:
@@ -156,8 +158,12 @@ class Player(Entity):
             self.y_speed = 0
         self.x_speed /= 1.1
         self.y_speed /= 1.1
-        # moving ^ blit-ing v
-        SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
+        # moving ^
+        post_sprite = self.sprite.copy()
+        if self.iframes > 0:  # ghost effect for invincibility
+            post_sprite.set_alpha((math.sin(pygame.time.get_ticks() / 300) + 1.5) * 102)
+        # blit-ing v
+        SCREEN.blit(post_sprite, (self.rect.x, self.rect.y))
 
 
 def win(who, FONT):
@@ -174,7 +180,7 @@ def win(who, FONT):
 
 
 def main_pt2(s=None, conn=None):
-    global lvl_elements, missles, ships
+    global lvl_elements, missles, ships, pwr_ups
     ships = [] 
     pwr_ups = []
     rgb = 0
@@ -514,8 +520,8 @@ def menu():
 if __name__ == "__main__":
     pygame.init()
     pygame.mouse.set_visible(False)
-    WIDTH, HEIGHT = (pygame.display.Info().current_w // 1.5, pygame.display.Info().current_h // 1.5)
-    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+    WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
     CLOCK = pygame.time.Clock()
     FONT = pygame.font.Font(resource_path("assets/04B_30__.ttf"), 50)
     MAX_PROJECTILES = 3
