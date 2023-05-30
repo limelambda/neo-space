@@ -1,5 +1,7 @@
 import pygame, socket, pickle, sys, os, random, math, joysticks
 
+pygame.init()
+
 
 def resource_path(relative_path):
     base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
@@ -44,7 +46,7 @@ def colliding(rect1: pygame.rect, rect2: pygame.rect):
 
 
 class Entity:
-    def __init__(self, x, y, sprite, rotation = 0, size = 80):
+    def __init__(self, x, y, sprite, rotation=0, size=80):
         if type(sprite) == str:
             self.sprite = pygame.transform.scale(
                 pygame.transform.rotate(pygame.image.load(sprite), rotation),
@@ -74,14 +76,21 @@ class Pwr_up(Entity):
         else:
             SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
 
+
 class Invincibility(Pwr_up):
+    GET_SOUND = pygame.mixer.Sound(resource_path("assets/audio/invincibility.wav"))
+
     def __init__(self, x, y):
         super().__init__(x, y, "assets/powerups/invin.png")
 
     def special(self, ship):
+        pygame.mixer.Sound.play(Invincibility.GET_SOUND)
         ship.iframes = 300
 
+
 class Missle(Entity):
+    HIT_SOUND = pygame.mixer.Sound(resource_path("assets/audio/impact.wav"))
+
     def __init__(self, x, y, sprite, team, enemy, rotation=0, size=5):
         super().__init__(x, y, sprite, rotation, size)
         self.enemy = enemy
@@ -91,6 +100,7 @@ class Missle(Entity):
     def update(self):
         if not (self.rect.x > WIDTH - self.rect.width or self.rect.x <= 0):
             if colliding(self.rect, self.enemy) and self.enemy.iframes < 1:
+                pygame.mixer.Sound.play(Missle.HIT_SOUND)
                 self.team.score += 1
                 self.enemy.iframes = 5
                 missles.remove(self)
@@ -104,6 +114,8 @@ class Missle(Entity):
 
 
 class Player(Entity):
+    FIRE_SOUND = pygame.mixer.Sound(resource_path("assets/audio/fire.wav"))
+
     def __init__(self, x, y, sprite, controls, rotation=0, size=80, enemy=None):
         super().__init__(x, y, sprite, rotation, size)
         self.controls = controls
@@ -117,6 +129,7 @@ class Player(Entity):
                 len([missle for missle in missles if missle.team is self])
                 <= MAX_PROJECTILES
             ):
+                pygame.mixer.Sound.play(Player.FIRE_SOUND)
                 missles.append(
                     Missle(
                         self.rect.x,
@@ -185,7 +198,7 @@ def win(who, FONT):
 
 def main_pt2(s=None, conn=None):
     global lvl_elements, missles, ships, pwr_ups
-    ships = [] 
+    ships = []
     pwr_ups = []
     rgb = 0
     lvl_elements = (pygame.Rect(WIDTH // 2 - 10, 0, 20, HEIGHT),)
@@ -194,43 +207,47 @@ def main_pt2(s=None, conn=None):
     )
     x_transform = lambda to_transform: WIDTH - to_transform - 78  # Why 78????
     # Define a variable to control the main loop
-    ships.append(Player(
-        WIDTH // 4,
-        HEIGHT // 2,
-        resource_path("assets/ship-p1.png"),
-        {
-            pygame.K_w: (0, -1),
-            pygame.K_a: (-1, 0),
-            pygame.K_s: (0, 1),
-            pygame.K_d: (1, 0),
-            pygame.K_e: "fire",
-        },
-        rotation=-90,
-    ))
-    ships.append(Player(
-        WIDTH // 4 * 3,
-        HEIGHT // 2,
-        resource_path("assets/ship-p2.png"),
-        {
-            pygame.K_w: (0, -1),
-            pygame.K_a: (-1, 0),
-            pygame.K_s: (0, 1),
-            pygame.K_d: (1, 0),
-            pygame.K_e: "fire",
-        }
-        if is_online
-        else {
-            pygame.K_UP: (0, -1),
-            pygame.K_LEFT: (-1, 0),
-            pygame.K_DOWN: (0, 1),
-            pygame.K_RIGHT: (1, 0),
-            pygame.K_RCTRL: "fire",
-        },
-        rotation=90,
-        enemy=ships[0],
-    ))
+    ships.append(
+        Player(
+            WIDTH // 4,
+            HEIGHT // 2,
+            resource_path("assets/ship-p1.png"),
+            {
+                pygame.K_w: (0, -1),
+                pygame.K_a: (-1, 0),
+                pygame.K_s: (0, 1),
+                pygame.K_d: (1, 0),
+                pygame.K_e: "fire",
+            },
+            rotation=-90,
+        )
+    )
+    ships.append(
+        Player(
+            WIDTH // 4 * 3,
+            HEIGHT // 2,
+            resource_path("assets/ship-p2.png"),
+            {
+                pygame.K_w: (0, -1),
+                pygame.K_a: (-1, 0),
+                pygame.K_s: (0, 1),
+                pygame.K_d: (1, 0),
+                pygame.K_e: "fire",
+            }
+            if is_online
+            else {
+                pygame.K_UP: (0, -1),
+                pygame.K_LEFT: (-1, 0),
+                pygame.K_DOWN: (0, 1),
+                pygame.K_RIGHT: (1, 0),
+                pygame.K_RCTRL: "fire",
+            },
+            rotation=90,
+            enemy=ships[0],
+        )
+    )
     ships[0].enemy = ships[1]
-    SPAWN_PWR_UP_EVNT = pygame.USEREVENT+1
+    SPAWN_PWR_UP_EVNT = pygame.USEREVENT + 1
     pygame.time.set_timer(SPAWN_PWR_UP_EVNT, 10000)  # Every 1000ms spawn pwr up
     while True:
         rgb += 1
@@ -239,7 +256,11 @@ def main_pt2(s=None, conn=None):
                 # Change the value to False, to exit the main loop
                 quit()
             if event.type == SPAWN_PWR_UP_EVNT:
-                pwr_ups.append(Invincibility(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)))
+                pwr_ups.append(
+                    Invincibility(
+                        random.randrange(0, WIDTH), random.randrange(0, HEIGHT)
+                    )
+                )
             if event.type == pygame.JOYDEVICEADDED:
                 joy = pygame.joystick.Joystick(event.device_index)
                 joys.append(joy)
@@ -501,7 +522,6 @@ def menu():
 
 
 if __name__ == "__main__":
-    pygame.init()
     pygame.mouse.set_visible(False)
     WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
     SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
