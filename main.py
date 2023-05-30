@@ -335,15 +335,15 @@ def main_pt2(s=None, conn=None):
             pygame.draw.rect(SCREEN, hsv_to_rgb(rgb / 360, 1, 1), lvl_element)
         # Do text shenanigans / check for win
         if ships[0].score > 9:
-            win("P1", FONT)
-        if ships[1].score > 9:
             win("P2", FONT)
+        if ships[1].score > 9:
+            win("P1", FONT)
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ships[0].score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ships[1].score), 10, (255, 155, 155)),
             (30, 120),
         )
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ships[1].score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ships[0].score), 10, (255, 155, 155)),
             (WIDTH - (30 + pygame.font.Font.size(FONT, str(ships[1].score))[0]), 120),
         )
 
