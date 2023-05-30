@@ -1,5 +1,6 @@
 import pygame, socket, pickle, sys, os, random, math, joysticks
 
+pygame.init()
 
 def resource_path(relative_path):
     base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
@@ -75,13 +76,18 @@ class Pwr_up(Entity):
             SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
 
 class Invincibility(Pwr_up):
+    GET_SOUND = pygame.mixer.Sound(resource_path("assets/audio/invincibility.wav"))
+
     def __init__(self, x, y):
         super().__init__(x, y, "assets/powerups/invin.png")
 
     def special(self, ship):
+        pygame.mixer.Sound.play(Invincibility.GET_SOUND)
         ship.iframes = 300
 
 class Missle(Entity):
+    HIT_SOUND = pygame.mixer.Sound(resource_path("assets/audio/impact.wav"))
+
     def __init__(self, x, y, sprite, team, enemy, rotation=0, size=5):
         super().__init__(x, y, sprite, rotation, size)
         self.enemy = enemy
@@ -91,6 +97,7 @@ class Missle(Entity):
     def update(self):
         if not (self.rect.x > WIDTH - self.rect.width or self.rect.x <= 0):
             if colliding(self.rect, self.enemy) and self.enemy.iframes < 1:
+                pygame.mixer.Sound.play(Missle.HIT_SOUND)
                 self.team.score += 1
                 self.enemy.iframes = 5
                 missles.remove(self)
@@ -104,6 +111,8 @@ class Missle(Entity):
 
 
 class Player(Entity):
+    FIRE_SOUND = pygame.mixer.Sound(resource_path("assets/audio/fire.wav"))
+
     def __init__(self, x, y, sprite, controls, rotation=0, size=80, enemy=None):
         super().__init__(x, y, sprite, rotation, size)
         self.controls = controls
@@ -117,6 +126,7 @@ class Player(Entity):
                 len([missle for missle in missles if missle.team is self])
                 <= MAX_PROJECTILES
             ):
+                pygame.mixer.Sound.play(Player.FIRE_SOUND)
                 missles.append(
                     Missle(
                         self.rect.x,
@@ -501,7 +511,6 @@ def menu():
 
 
 if __name__ == "__main__":
-    pygame.init()
     pygame.mouse.set_visible(False)
     WIDTH, HEIGHT = (pygame.display.Info().current_w, pygame.display.Info().current_h)
     SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
