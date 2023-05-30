@@ -224,7 +224,7 @@ def main_pt2(s=None, conn=None):
             pygame.K_LEFT: (-1, 0),
             pygame.K_DOWN: (0, 1),
             pygame.K_RIGHT: (1, 0),
-            pygame.K_RCTRL: "fire",
+            pygame.K_SPACE: "fire",
         },
         rotation=90,
         enemy=ships[0],
@@ -258,7 +258,7 @@ def main_pt2(s=None, conn=None):
                 1073741904,
                 1073741905,
                 1073741906,
-                1073742052,
+                32,
             )
             if pygame.key.get_pressed()[i]
         ]
@@ -495,7 +495,7 @@ def menu():
                 elif event.key == pygame.K_l:
                     is_online = False
                     main_pt2()
-        if pygame.time.get_ticks() > 5000:
+        if pygame.time.get_ticks() > 0:
             is_online = False
             main_pt2()
 
