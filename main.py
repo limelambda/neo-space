@@ -270,16 +270,16 @@ def main_pt2(s=None, conn=None):
         pressed = [
             i
             for i in (
-                119,
-                97,
-                115,
-                100,
-                101,
-                1073741903,
-                1073741904,
-                1073741905,
-                1073741906,
-                1073742052,
+                pygame.K_w,
+                pygame.K_a,
+                pygame.K_s,
+                pygame.K_d,
+                pygame.K_e,
+                pygame.K_UP,
+                pygame.K_DOWN,
+                pygame.K_LEFT,
+                pygame.K_RIGHT,
+                pygame.K_RCTRL,
             )
             if pygame.key.get_pressed()[i]
         ]
