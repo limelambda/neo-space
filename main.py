@@ -203,7 +203,7 @@ def main_pt2(s=None, conn=None):
             pygame.K_a: (-1, 0),
             pygame.K_s: (0, 1),
             pygame.K_d: (1, 0),
-            pygame.K_RALT: "fire",
+            pygame.K_SPACE: "fire",
         },
         rotation=90,
     ))
@@ -224,7 +224,7 @@ def main_pt2(s=None, conn=None):
             pygame.K_LEFT: (-1, 0),
             pygame.K_DOWN: (0, 1),
             pygame.K_RIGHT: (1, 0),
-            pygame.K_SPACE: "fire",
+            pygame.K_RALT: "fire",
         },
         rotation=-90,
         enemy=ships[0],
