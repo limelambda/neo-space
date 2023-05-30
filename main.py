@@ -203,7 +203,7 @@ def main_pt2(s=None, conn=None):
             pygame.K_a: (-1, 0),
             pygame.K_s: (0, 1),
             pygame.K_d: (1, 0),
-            pygame.K_e: "fire",
+            pygame.K_RALT: "fire",
         },
         rotation=90,
     ))
@@ -253,7 +253,7 @@ def main_pt2(s=None, conn=None):
                 97,
                 115,
                 100,
-                101,
+                1073742054,
                 1073741903,
                 1073741904,
                 1073741905,
