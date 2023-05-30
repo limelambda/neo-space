@@ -58,24 +58,28 @@ class Entity:
         self.rotation = rotation
 
 
-class Invincibility(Entity):
-    def __init__(self, x, y):
-        super().__init__(x, y, resource_path("assets/powerups/invin.png"))
+class Pwr_up(Entity):
+    def __init__(self, x, y, sprite_path):
+        super().__init__(x, y, resource_path(sprite_path))
         self.parent = None
 
     def update(self):
-        if self.parent == None:
-            for ship in ships:
-                if colliding(self.rect, ship):
-                    ship.iframes = 600
-                    pwr_ups.remove(self)
-                    del self
-                    return
-            else:
-                SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
+        for ship in ships:
+            if colliding(self.rect, ship):
+                self.special(ship)
+                self.parent = ship
+                pwr_ups.remove(self)
+                del self
+                return
         else:
             SCREEN.blit(self.sprite, (self.rect.x, self.rect.y))
 
+class Invincibility(Pwr_up):
+    def __init__(self, x, y):
+        super().__init__(x, y, "assets/powerups/invin.png")
+
+    def special(self, ship):
+        ship.iframes = 300
 
 class Missle(Entity):
     def __init__(self, x, y, sprite, team, enemy, rotation=0, size=5):
