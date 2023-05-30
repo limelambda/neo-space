@@ -195,7 +195,7 @@ def main_pt2(s=None, conn=None):
     x_transform = lambda to_transform: WIDTH - to_transform - 78  # Why 78????
     # Define a variable to control the main loop
     ships.append(Player(
-        WIDTH // 4,
+        WIDTH // 4 * 3,
         HEIGHT // 2,
         resource_path("assets/ship-p1.png"),
         {
@@ -205,10 +205,10 @@ def main_pt2(s=None, conn=None):
             pygame.K_d: (1, 0),
             pygame.K_e: "fire",
         },
-        rotation=-90,
+        rotation=90,
     ))
     ships.append(Player(
-        WIDTH // 4 * 3,
+        WIDTH // 4,
         HEIGHT // 2,
         resource_path("assets/ship-p2.png"),
         {
@@ -226,7 +226,7 @@ def main_pt2(s=None, conn=None):
             pygame.K_RIGHT: (1, 0),
             pygame.K_SPACE: "fire",
         },
-        rotation=90,
+        rotation=-90,
         enemy=ships[0],
     ))
     ships[0].enemy = ships[1]
