@@ -35,7 +35,7 @@ def hsv_to_rgb(h, s, v):  # Shamelessly stolen code
         return (v, p, q)
 
 
-def colliding(rect1: pygame.rect, rect2: pygame.rect):
+def colliding(rect1: pygame.Rect, rect2: pygame.Rect):
     return (
         rect1.x < 0
         or rect1.x > WIDTH - rect1.width
@@ -64,6 +64,9 @@ class Pwr_up(Entity):
     def __init__(self, x, y, sprite_path):
         super().__init__(x, y, resource_path(sprite_path))
         self.parent = None
+
+    def special(self, ship):
+        pass  # Constuctor
 
     def update(self):
         for ship in ships:
@@ -178,14 +181,14 @@ class Player(Entity):
         # moving ^
         post_sprite = self.sprite.copy()
         if self.iframes > 0:  # ghost effect for invincibility
-            post_sprite.set_alpha((math.sin(pygame.time.get_ticks() / 300) + 1.5) * 102)
+            post_sprite.set_alpha(int((math.sin(pygame.time.get_ticks() / 300) + 1.5) * 102))
         # blit-ing v
         SCREEN.blit(post_sprite, (self.rect.x, self.rect.y))
 
 
 def win(who, FONT):
     SCREEN.blit(
-        pygame.font.Font.render(FONT, f"{who} wins!", 10, (255, 155, 155)),
+        pygame.font.Font.render(FONT, f"{who} wins!", True, (255, 155, 155)),
         (
             WIDTH / 2 - (pygame.font.Font.size(FONT, f"{who} wins!")[0] / 2),
             HEIGHT / 2 - (pygame.font.Font.size(FONT, f"{who} wins!")[1] / 2),
@@ -258,7 +261,7 @@ def main_pt2(s=None, conn=None):
             if event.type == SPAWN_PWR_UP_EVNT:
                 pwr_ups.append(
                     Invincibility(
-                        random.randrange(0, WIDTH), random.randrange(0, HEIGHT)
+                        random.randrange(0, WIDTH), random.randrange(0, HEIGHT)  # This should not be fully random and can lead to unfairness
                     )
                 )
             if event.type == pygame.JOYDEVICEADDED:
@@ -350,11 +353,11 @@ def main_pt2(s=None, conn=None):
         if ships[1].score > 9:
             win("P2", FONT)
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ships[0].score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ships[0].score), True, (255, 155, 155)),
             (30, 120),
         )
         SCREEN.blit(
-            pygame.font.Font.render(FONT, str(ships[1].score), 10, (255, 155, 155)),
+            pygame.font.Font.render(FONT, str(ships[1].score), True, (255, 155, 155)),
             (WIDTH - (30 + pygame.font.Font.size(FONT, str(ships[1].score))[0]), 120),
         )
 
@@ -373,7 +376,7 @@ def main_pt1():
         SCREEN.fill((0, 0, 0))
         if is_client:
             SCREEN.blit(
-                pygame.font.Font.render(FONT, user_text, 10, (255, 155, 155)),
+                pygame.font.Font.render(FONT, user_text, True, (255, 155, 155)),
                 (
                     WIDTH / 2 - (pygame.font.Font.size(FONT, user_text)[0] / 2),
                     HEIGHT / 2,
@@ -381,7 +384,7 @@ def main_pt1():
             )
             SCREEN.blit(
                 pygame.font.Font.render(
-                    FONT, "Please type in the hosts IP!", 10, (255, 155, 155)
+                    FONT, "Please type in the hosts IP!", True, (255, 155, 155)
                 ),
                 (
                     WIDTH / 2
@@ -408,7 +411,7 @@ def main_pt1():
             SCREEN.fill((0, 0, 0))
             SCREEN.blit(
                 pygame.font.Font.render(
-                    FONT, "Waiting for other player!!", 10, (255, 155, 155)
+                    FONT, "Waiting for other player!!", True, (255, 155, 155)
                 ),
                 (
                     WIDTH / 2
@@ -469,7 +472,7 @@ def menu():
     SCREEN.fill((0, 0, 0))
     SCREEN.blit(
         pygame.font.Font.render(
-            FONT, "Local will auto start after 5 seconds ", 10, (255, 155, 155)
+            FONT, "Local will auto start after 5 seconds ", True, (255, 155, 155)
         ),
         (
             WIDTH / 2
@@ -479,21 +482,21 @@ def menu():
         ),
     )
     SCREEN.blit(
-        pygame.font.Font.render(FONT, "Press L to play locally!", 10, (255, 155, 155)),
+        pygame.font.Font.render(FONT, "Press L to play locally!", True, (255, 155, 155)),
         (
             WIDTH / 2 - pygame.font.Font.size(FONT, "Press L to play locally!")[0] / 2,
             HEIGHT / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[1] * 1.5,
         ),
     )
     SCREEN.blit(
-        pygame.font.Font.render(FONT, "Press C to connect!", 10, (255, 155, 155)),
+        pygame.font.Font.render(FONT, "Press C to connect!", True, (255, 155, 155)),
         (
             WIDTH / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[0] / 2,
             HEIGHT / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[1] / 2,
         ),
     )
     SCREEN.blit(
-        pygame.font.Font.render(FONT, "Press S to host!", 10, (255, 155, 155)),
+        pygame.font.Font.render(FONT, "Press S to host!", True, (255, 155, 155)),
         (
             WIDTH / 2 - pygame.font.Font.size(FONT, "Press S to host!")[0] / 2,
             HEIGHT / 2 + pygame.font.Font.size(FONT, "Press C to connect!")[1] / 2,
