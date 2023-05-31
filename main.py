@@ -1,4 +1,13 @@
-import pygame, socket, pickle, sys, os, random, math, joysticks
+import math
+import os
+import pickle
+import random
+import socket
+import sys
+
+import pygame
+
+import joysticks
 
 pygame.init()
 
@@ -181,7 +190,9 @@ class Player(Entity):
         # moving ^
         post_sprite = self.sprite.copy()
         if self.iframes > 0:  # ghost effect for invincibility
-            post_sprite.set_alpha(int((math.sin(pygame.time.get_ticks() / 300) + 1.5) * 102))
+            post_sprite.set_alpha(
+                int((math.sin(pygame.time.get_ticks() / 300) + 1.5) * 102)
+            )
         # blit-ing v
         SCREEN.blit(post_sprite, (self.rect.x, self.rect.y))
 
@@ -261,7 +272,10 @@ def main_pt2(s=None, conn=None):
             if event.type == SPAWN_PWR_UP_EVNT:
                 pwr_ups.append(
                     Invincibility(
-                        random.randrange(0, WIDTH), random.randrange(0, HEIGHT)  # This should not be fully random and can lead to unfairness
+                        random.randrange(0, WIDTH),
+                        random.randrange(
+                            0, HEIGHT
+                        ),  # This should not be fully random and can lead to unfairness
                     )
                 )
             if event.type == pygame.JOYDEVICEADDED:
@@ -482,7 +496,9 @@ def menu():
         ),
     )
     SCREEN.blit(
-        pygame.font.Font.render(FONT, "Press L to play locally!", True, (255, 155, 155)),
+        pygame.font.Font.render(
+            FONT, "Press L to play locally!", True, (255, 155, 155)
+        ),
         (
             WIDTH / 2 - pygame.font.Font.size(FONT, "Press L to play locally!")[0] / 2,
             HEIGHT / 2 - pygame.font.Font.size(FONT, "Press C to connect!")[1] * 1.5,

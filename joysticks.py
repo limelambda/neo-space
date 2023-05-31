@@ -1,11 +1,13 @@
 import pygame
 
+
 def to_key(joys):
     pressed = []
-    for iter, joy in enumerate(joys):  # Joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
+    for iter, joy in enumerate(
+        joys
+    ):  # Joysticks input by converting keys and kinda adding to pressed, defaults to player 1 controller controll
         for button, button_pressed in {
-            button: joy.get_button(button)
-            for button in range(joy.get_numbuttons())
+            button: joy.get_button(button) for button in range(joy.get_numbuttons())
         }.items():
             if button == 3 and button_pressed:  # Fire
                 pressed.append((pygame.K_e, pygame.K_RCTRL)[iter])
